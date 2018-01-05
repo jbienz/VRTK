@@ -1,7 +1,8 @@
 ﻿// Lever|Controls3D|100070
 namespace VRTK
 {
-    using UnityEngine;
+	using System;
+	using UnityEngine;
 
     /// <summary>
     /// Attaching the script to a game object will allow the user to interact with it as if it were a lever. The direction can be freely set.
@@ -40,8 +41,64 @@ namespace VRTK
         protected HingeJoint leverHingeJoint;
         protected bool leverHingeJointCreated = false;
         protected Rigidbody leverRigidbody;
+		//protected Vector3 initialRotation;
+		protected Quaternion disableRotation;
+		protected float hingeDisableAngle;
+		protected float hingeEnableAngle;
 
-        protected override void InitRequiredComponents()
+		protected virtual void OnEnable()
+		{
+			/*
+			 * Whenever a HingeJoint is enabled, it's starting angle is offset by the parent transform.
+			 * For example:
+			 * 
+			 * - If the parents starting rotation angle is 0 degrees and the springs target angle is 45 degrees,
+			 * the parent will be rotated to 45 degrees. 
+			 * 
+			 * - If the parents starting rotation angle is 45 degrees and the springs target angle is 45 degrees, 
+			 * the parent will STILL be rotated 45 degrees and end up at a rotation angle of 90.
+			 * 
+			 * Therefore, if a hinge is disable and re-enabled the rotation angle will always be off.
+			 * 
+			 */
+
+			if (leverHingeJoint != null)
+			{
+				switch (direction)
+				{
+					case LeverDirection.x:
+						hingeEnableAngle = transform.localRotation.eulerAngles.x;
+						break;
+					case LeverDirection.y:
+						hingeEnableAngle = transform.localRotation.eulerAngles.y;
+						break;
+					case LeverDirection.z:
+						hingeEnableAngle = transform.localRotation.eulerAngles.z;
+						break;
+				}
+				// hingeEnableAngle -= hingeDisableAngle;
+				HandleEnableAngles();
+			}
+		}
+
+		protected virtual void OnDisable()
+		{
+			disableRotation = transform.localRotation;
+			if (leverHingeJoint != null)
+			{
+				hingeDisableAngle = leverHingeJoint.angle;
+			}
+		}
+
+		protected virtual void HandleEnableAngles()
+		{
+			JointLimits leverJointLimits = leverHingeJoint.limits;
+			leverJointLimits.min = (float)Math.Round(minAngle - hingeEnableAngle);
+			leverJointLimits.max = (float)Math.Round(maxAngle - hingeEnableAngle);
+			leverHingeJoint.limits = leverJointLimits;
+		}
+
+		protected override void InitRequiredComponents()
         {
             if (GetComponentInChildren<Collider>() == null)
             {
@@ -169,20 +226,20 @@ namespace VRTK
 
         protected virtual float CalculateValue()
         {
-            return Mathf.Round((leverHingeJoint.angle) / stepSize) * stepSize;
+            return Mathf.Round((leverHingeJoint.angle + hingeEnableAngle) / stepSize) * stepSize;
         }
 
         protected virtual void SnapToValue(float value)
         {
-            float angle = ((value - minAngle) / (maxAngle - minAngle)) * (leverHingeJoint.limits.max - leverHingeJoint.limits.min);
+			float angle = ((value - minAngle) / (maxAngle - minAngle)) * (leverHingeJoint.limits.max - leverHingeJoint.limits.min);
 
-            // TODO: there is no direct setter, one recommendation by Unity staff is to "abuse" min/max which seems the most reliable but not working so far
-            JointLimits oldLimits = leverHingeJoint.limits;
-            JointLimits tempLimits = leverHingeJoint.limits;
-            tempLimits.min = angle;
-            tempLimits.max = angle;
-            leverHingeJoint.limits = tempLimits;
-            leverHingeJoint.limits = oldLimits;
-        }
+			// TODO: there is no direct setter, one recommendation by Unity staff is to "abuse" min/max which seems the most reliable but not working so far
+			JointLimits oldLimits = leverHingeJoint.limits;
+			JointLimits tempLimits = leverHingeJoint.limits;
+			tempLimits.min = angle;
+			tempLimits.max = angle;
+			leverHingeJoint.limits = tempLimits;
+			leverHingeJoint.limits = oldLimits;
+		}
     }
 }

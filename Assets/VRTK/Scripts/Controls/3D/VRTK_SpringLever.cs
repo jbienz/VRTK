@@ -1,7 +1,8 @@
 ﻿// Spring Lever|Controls3D|100080
 namespace VRTK
 {
-    using UnityEngine;
+	using System;
+	using UnityEngine;
 
     /// <summary>
     /// This script extends VRTK_Lever to add spring force toward whichever end of the lever's range it is closest to.
@@ -48,10 +49,18 @@ namespace VRTK
             }
         }
 
-        /// <summary>
-        /// Adjust spring force during HandleUpdate()
-        /// </summary>
-        protected override void HandleUpdate()
+		protected override void HandleEnableAngles()
+		{
+			base.HandleEnableAngles();
+			JointSpring leverSpring = leverHingeJoint.spring;
+			leverSpring.targetPosition = Mathf.Round(minAngle - hingeEnableAngle);
+			leverHingeJoint.spring = leverSpring;
+		}
+
+		/// <summary>
+		/// Adjust spring force during HandleUpdate()
+		/// </summary>
+		protected override void HandleUpdate()
         {
             base.HandleUpdate();
             ApplySpringForce();
@@ -71,8 +80,11 @@ namespace VRTK
 
         protected virtual float GetSpringTarget(bool towardZero)
         {
-            return (towardZero ? minAngle : maxAngle);
-        }
+
+            float targetAngle = (towardZero ? minAngle : maxAngle);
+			return Mathf.Round(targetAngle - hingeEnableAngle);
+
+		}
 
         /// <summary>
         /// Check which direction the lever needs to be pushed in and
