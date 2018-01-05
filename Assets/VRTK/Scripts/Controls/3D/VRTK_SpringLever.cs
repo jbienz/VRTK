@@ -52,12 +52,7 @@ namespace VRTK
 		protected override void HandleEnableAngles()
 		{
 			base.HandleEnableAngles();
-			ApplySpringForce(force:true);
-			/*
-			JointSpring leverSpring = leverHingeJoint.spring;
-			leverSpring.targetPosition = Mathf.Round(minAngle - hingeEnableAngle);
-			leverHingeJoint.spring = leverSpring;
-			*/
+			ApplySpringForce(force:true); // Handles the fact that hinge joints reset their angles on Disable and Re-Enable.
 		}
 
 		/// <summary>
@@ -103,9 +98,7 @@ namespace VRTK
             if (leverHingeJoint.useSpring)
             {
 				// get normalized value
-				var normValue = GetNormalizedValue();
-
-				bool towardZero = (snapToNearestLimit ? (normValue <= 50) : true);
+				bool towardZero = (snapToNearestLimit ? (GetNormalizedValue() <= 50) : true);
                 if (force | (towardZero != wasTowardZero))
                 {
                     JointSpring leverSpring = leverHingeJoint.spring;

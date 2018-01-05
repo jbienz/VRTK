@@ -48,20 +48,7 @@ namespace VRTK
 
 		protected virtual void OnEnable()
 		{
-			/*
-			 * Whenever a HingeJoint is enabled, it's starting angle is offset by the parent transform.
-			 * For example:
-			 * 
-			 * - If the parents starting rotation angle is 0 degrees and the springs target angle is 45 degrees,
-			 * the parent will be rotated to 45 degrees. 
-			 * 
-			 * - If the parents starting rotation angle is 45 degrees and the springs target angle is 45 degrees, 
-			 * the parent will STILL be rotated 45 degrees and end up at a rotation angle of 90.
-			 * 
-			 * Therefore, if a hinge is disable and re-enabled the rotation angle will always be off.
-			 * 
-			 */
-
+			// Handles the fact that hinge joints reset their angles on Disable and Re-Enable.
 			if (leverHingeJoint != null)
 			{
 				switch (direction)
@@ -76,7 +63,6 @@ namespace VRTK
 						hingeEnableAngle = transform.localRotation.eulerAngles.z;
 						break;
 				}
-				// hingeEnableAngle -= hingeDisableAngle;
 				HandleEnableAngles();
 			}
 		}
@@ -92,9 +78,19 @@ namespace VRTK
 
 		protected virtual void HandleEnableAngles()
 		{
+			/*
+			 * Whenever a HingeJoint is enabled, it's starting angle is offset by the parent transform.
+			 * For example:
+			 * 
+			 * - If the parents starting rotation angle is 0 degrees and the springs target angle is 45 degrees,
+			 * the hinge will be rotated +45 degrees in world space even though its local angles are not. 
+			 * 
+			 * If a hinge is disable and re-enabled the rotation angle will always be off unless something is done to compensate.
+			 * 
+			 */
 			JointLimits leverJointLimits = leverHingeJoint.limits;
-			leverJointLimits.min = (float)Math.Round(minAngle - hingeEnableAngle);
-			leverJointLimits.max = (float)Math.Round(maxAngle - hingeEnableAngle);
+			leverJointLimits.min = Mathf.Round(minAngle - hingeEnableAngle);
+			leverJointLimits.max = Mathf.Round(maxAngle - hingeEnableAngle);
 			leverHingeJoint.limits = leverJointLimits;
 		}
 
