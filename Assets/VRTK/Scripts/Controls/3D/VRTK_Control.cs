@@ -97,7 +97,8 @@ namespace VRTK
 
         public virtual void OnValueChanged(Control3DEventArgs e)
         {
-            if (ValueChanged != null)
+			Debug.LogFormat("VRTK_Control Value Changed: {0} - {1}", e.normalizedValue, e.value);
+			if (ValueChanged != null)
             {
                 ValueChanged(this, e);
             }

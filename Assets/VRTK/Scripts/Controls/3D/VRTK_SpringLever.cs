@@ -52,9 +52,12 @@ namespace VRTK
 		protected override void HandleEnableAngles()
 		{
 			base.HandleEnableAngles();
+			ApplySpringForce(force:true);
+			/*
 			JointSpring leverSpring = leverHingeJoint.spring;
 			leverSpring.targetPosition = Mathf.Round(minAngle - hingeEnableAngle);
 			leverHingeJoint.spring = leverSpring;
+			*/
 		}
 
 		/// <summary>
@@ -90,15 +93,20 @@ namespace VRTK
         /// Check which direction the lever needs to be pushed in and
         /// switch spring direction as necessary
         /// </summary>
-        protected virtual void ApplySpringForce()
+		/// <param name="force">
+		/// <c>true</c> to force the settings change even if previously the spring was already going in that direction.
+		/// </param>
+        protected virtual void ApplySpringForce(bool force=false)
         {
             leverHingeJoint.useSpring = (alwaysActive || !isGrabbed);
 
             if (leverHingeJoint.useSpring)
             {
-                // get normalized value
-                bool towardZero = (snapToNearestLimit ? (GetNormalizedValue() <= 50) : true);
-                if (towardZero != wasTowardZero)
+				// get normalized value
+				var normValue = GetNormalizedValue();
+
+				bool towardZero = (snapToNearestLimit ? (normValue <= 50) : true);
+                if (force | (towardZero != wasTowardZero))
                 {
                     JointSpring leverSpring = leverHingeJoint.spring;
                     leverSpring.targetPosition = GetSpringTarget(towardZero);
