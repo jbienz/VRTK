@@ -41,39 +41,81 @@ namespace VRTK
         protected HingeJoint leverHingeJoint;
         protected bool leverHingeJointCreated = false;
         protected Rigidbody leverRigidbody;
-		//protected Vector3 initialRotation;
-		protected Quaternion disableRotation;
-		protected float hingeDisableAngle;
-		protected float hingeEnableAngle;
+		protected Quaternion enableAngle;	// The angle of the attached body when it was first activated
+		protected Quaternion startAngle;	// The angle of the attached body when it was most recently enabled
+		protected float hingeDisableAngle;  // The angle that the hinge joint was rotated when it was last disabled
+		protected float hingeOffsetAngle;	// The offset angle of the hinge joint based on the value it had when it was last disabled and taking into account attached body angles
+
+
+		protected override void Awake()
+		{
+			base.Awake();
+
+			// Store initial rotation
+			startAngle = transform.localRotation;
+		}
 
 		protected virtual void OnEnable()
 		{
-			// Handles the fact that hinge joints reset their angles on Disable and Re-Enable.
-			if (leverHingeJoint != null)
-			{
-				switch (direction)
-				{
-					case LeverDirection.x:
-						hingeEnableAngle = transform.localRotation.eulerAngles.x;
-						break;
-					case LeverDirection.y:
-						hingeEnableAngle = transform.localRotation.eulerAngles.y;
-						break;
-					case LeverDirection.z:
-						hingeEnableAngle = transform.localRotation.eulerAngles.z;
-						break;
-				}
-				HandleEnableAngles();
-			}
+			// Store enabled rotation
+			enableAngle = transform.localRotation;
+
+			// The offset angle is the original start angle offset by the angle the handle
+			// was in when it was enabled plus the amount the handle had been rotated at the time 
+			// it was disabled. On first enable this offset will be zero. But 
+			// if the user moves the handle, then disables and re-enables the handle, there 
+			// will be offsets.
+
+			// Calculate offset angle
+			float enable = GetEnableAngle();
+			float start = GetStartAngle();
+
+			hingeOffsetAngle = (enable - start) + hingeDisableAngle;
+
+			// Handle the fact that hinge joints reset their angles on Disable and Re-Enable.
+			HandleEnableAngles();
 		}
 
 		protected virtual void OnDisable()
 		{
-			disableRotation = transform.localRotation;
 			if (leverHingeJoint != null)
 			{
-				hingeDisableAngle = leverHingeJoint.angle;
+				hingeDisableAngle = (leverHingeJoint.angle + hingeDisableAngle);
 			}
+		}
+		
+		/// <summary>
+		/// Gets Euler from the specified quaternion that matches the current handle direction.
+		/// </summary>
+		/// <param name="quaternion"></param>
+		protected float GetHandleAngle(Quaternion quaternion)
+		{
+			switch (direction)
+			{
+				case LeverDirection.x:
+					return quaternion.eulerAngles.x;
+				case LeverDirection.y:
+					return quaternion.eulerAngles.y;
+				case LeverDirection.z:
+				default:
+					return quaternion.eulerAngles.z;
+			}
+		}
+
+		/// <summary>
+		/// Gets the angle of the handle when the control was started based on the handle direction.
+		/// </summary>
+		protected float GetStartAngle()
+		{
+			return GetHandleAngle(startAngle);
+		}
+
+		/// <summary>
+		/// Gets the angle of the handle when the control was enabled based on the handle direction.
+		/// </summary>
+		protected float GetEnableAngle()
+		{
+			return GetHandleAngle(enableAngle);
 		}
 
 		protected virtual void HandleEnableAngles()
@@ -88,10 +130,18 @@ namespace VRTK
 			 * If a hinge is disable and re-enabled the rotation angle will always be off unless something is done to compensate.
 			 * 
 			 */
-			JointLimits leverJointLimits = leverHingeJoint.limits;
-			leverJointLimits.min = Mathf.Round(minAngle - hingeEnableAngle);
-			leverJointLimits.max = Mathf.Round(maxAngle - hingeEnableAngle);
-			leverHingeJoint.limits = leverJointLimits;
+			if (leverHingeJoint != null)
+			{
+				float enable = GetHandleAngle(enableAngle);
+				float start = GetHandleAngle(startAngle);
+				// Since the joint resets its own angles relative to the parent on ever activation, 
+				// We now need to calculate how to offset the joints to match where the lever was 
+				// before it was deactivated.
+				JointLimits leverJointLimits = leverHingeJoint.limits;
+				leverJointLimits.min = (minAngle - (enable + hingeDisableAngle));
+				leverJointLimits.max = (maxAngle - (enable + hingeDisableAngle));
+				leverHingeJoint.limits = leverJointLimits;
+			}
 		}
 
 		protected override void InitRequiredComponents()
@@ -222,7 +272,8 @@ namespace VRTK
 
         protected virtual float CalculateValue()
         {
-            return Mathf.Round((leverHingeJoint.angle + hingeEnableAngle) / stepSize) * stepSize;
+			var enable = GetEnableAngle();
+            return Mathf.Round(((leverHingeJoint.angle + enable) + hingeDisableAngle) / stepSize) * stepSize;
         }
 
         protected virtual void SnapToValue(float value)

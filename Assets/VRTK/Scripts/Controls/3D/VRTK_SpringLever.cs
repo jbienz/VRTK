@@ -78,35 +78,39 @@ namespace VRTK
 
         protected virtual float GetSpringTarget(bool towardZero)
         {
-
+			float enable = GetEnableAngle();
             float targetAngle = (towardZero ? minAngle : maxAngle);
-			return Mathf.Round(targetAngle - hingeEnableAngle);
+			return Mathf.Round(targetAngle - (enable + hingeDisableAngle));
 
 		}
 
-        /// <summary>
-        /// Check which direction the lever needs to be pushed in and
-        /// switch spring direction as necessary
-        /// </summary>
+		/// <summary>
+		/// Check which direction the lever needs to be pushed in and
+		/// switch spring direction as necessary
+		/// </summary>
 		/// <param name="force">
 		/// <c>true</c> to force the settings change even if previously the spring was already going in that direction.
 		/// </param>
-        protected virtual void ApplySpringForce(bool force=false)
-        {
-            leverHingeJoint.useSpring = (alwaysActive || !isGrabbed);
+		protected virtual void ApplySpringForce(bool force = false)
+		{
+			if (leverHingeJoint != null)
+			{
+				leverHingeJoint.useSpring = (alwaysActive || !isGrabbed);
 
-            if (leverHingeJoint.useSpring)
-            {
-				// get normalized value
-				bool towardZero = (snapToNearestLimit ? (GetNormalizedValue() <= 50) : true);
-                if (force | (towardZero != wasTowardZero))
-                {
-                    JointSpring leverSpring = leverHingeJoint.spring;
-                    leverSpring.targetPosition = GetSpringTarget(towardZero);
-                    leverHingeJoint.spring = leverSpring;
-                    wasTowardZero = towardZero;
-                }
-            }
+				if (leverHingeJoint.useSpring)
+				{
+					// get normalized value
+					var norm = GetNormalizedValue();
+					bool towardZero = (snapToNearestLimit ? (GetNormalizedValue() <= 50) : true);
+					if (force | (towardZero != wasTowardZero))
+					{
+						JointSpring leverSpring = leverHingeJoint.spring;
+						leverSpring.targetPosition = GetSpringTarget(towardZero);
+						leverHingeJoint.spring = leverSpring;
+						wasTowardZero = towardZero;
+					}
+				}
+			}
         }
     }
 }
